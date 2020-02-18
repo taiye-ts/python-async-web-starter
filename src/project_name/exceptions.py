@@ -1,0 +1,2 @@
+class NotFoundInRepository(Exception):
+    pass

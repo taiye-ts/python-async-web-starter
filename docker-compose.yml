@@ -1,0 +1,69 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:11.5-alpine
+    restart: "no"
+    command: postgres
+             -c 'default_transaction_isolation=read committed'
+             -c 'timezone=UTC'
+             -c 'client_encoding=UTF8'
+             -c 'max_connections=200'
+             -c 'shared_buffers=128MB'
+             -c 'effective_cache_size=384MB'
+             -c 'maintenance_work_mem=32MB'
+             -c 'checkpoint_completion_target=0.7'
+             -c 'wal_buffers=3932kB'
+             -c 'default_statistics_target=100'
+             -c 'random_page_cost=1.1'
+             -c 'effective_io_concurrency=200'
+             -c 'work_mem=655kB'
+             -c 'min_wal_size=1GB'
+             -c 'max_wal_size=2GB'
+             -c 'max_worker_processes=2'
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    env_file:
+      - env/database.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:5.0.6-alpine
+    restart: "no"
+    command: redis-server --save 900 1 --save 300 10 --save 60 10000 --dir /data --maxmemory 64mb --maxmemory-policy volatile-lru
+    volumes:
+      - redis:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    image: python-async-web-starter
+    build:
+      dockerfile: Dockerfile
+      context: ./
+    command: gunicorn -b 0.0.0.0:9051 --reload -w 1 --log-file - --log-level info --capture-output --max-requests 1000 --timeout 30 api:app --worker-class aiohttp.worker.GunicornWebWorker
+    restart: "no"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./env/database.env
+      - ./env/service.env
+    environment:
+      - PROJECT_VERSION
+      - PROJECT_ENVIRONMENT
+    ports:
+      - "9051:9051"
+
+volumes:
+  postgres:
+  rabbitmq:
+  redis:
