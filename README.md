@@ -7,7 +7,7 @@ rm -rf .git
 
 # Description
 Template for python web project:
-- falcon
+- aiohttp
 - sqlalchemy
 - alembic
 - postgres as db
